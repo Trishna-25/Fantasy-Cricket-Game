@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>900</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Fantasy Cricket Game</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="categoryLayout">
+      <item>
+       <widget class="QLabel" name="categoryLabel">
+        <property name="text">
+         <string>Select Category:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioBatsman">
+        <property name="text">
+         <string>Batsman</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioBowler">
+        <property name="text">
+         <string>Bowler</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioAllRounder">
+        <property name="text">
+         <string>All-Rounder</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioWicketKeeper">
+        <property name="text">
+         <string>Wicket-Keeper</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="listsLayout">
+      <item>
+       <layout class="QVBoxLayout" name="availableLayout">
+        <item>
+         <widget class="QLabel" name="availableLabel">
+          <property name="text">
+           <string>Available Players</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="availablePlayersList"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="selectedLayout">
+        <item>
+         <widget class="QLabel" name="selectedLabel">
+          <property name="text">
+           <string>Selected Players</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="selectedPlayersList"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QLabel" name="pointsLabel">
+      <property name="text">
+       <string>Points Available: 100 | Points Used: 0</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>900</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuManage_Teams">
+    <property name="title">
+     <string>Manage Teams</string>
+    </property>
+    <addaction name="actionNew_Team"/>
+    <addaction name="actionOpen_Team"/>
+    <addaction name="actionSave_Team"/>
+   </widget>
+   <widget class="QMenu" name="menuEvaluate">
+    <property name="title">
+     <string>Evaluate</string>
+    </property>
+    <addaction name="actionEvaluate_Score"/>
+   </widget>
+   <addaction name="menuManage_Teams"/>
+   <addaction name="menuEvaluate"/>
+  </widget>
+  <action name="actionNew_Team">
+   <property name="text">
+    <string>New Team</string>
+   </property>
+  </action>
+  <action name="actionOpen_Team">
+   <property name="text">
+    <string>Open Team</string>
+   </property>
+  </action>
+  <action name="actionSave_Team">
+   <property name="text">
+    <string>Save Team</string>
+   </property>
+  </action>
+  <action name="actionEvaluate_Score">
+   <property name="text">
+    <string>Evaluate Score</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,482 @@
+import sys
+import sqlite3
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
+                             QHBoxLayout, QListWidget, QPushButton, QLabel, 
+                             QRadioButton, QButtonGroup, QMenuBar, QAction, 
+                             QMessageBox, QInputDialog, QDialog, QComboBox,
+                             QAbstractItemView)
+from PyQt5.QtCore import Qt
+
+class FantasyCricketApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.db_name = "fantasy_cricket.db"
+        self.current_team_name = None
+        self.selected_players = []
+        self.max_points = 100
+        self.init_database()
+        self.init_ui()
+        
+    def init_database(self):
+        """Initialize the database with required tables"""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        # Create match table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS match (
+                Player TEXT,
+                Scored INTEGER,
+                Faced INTEGER,
+                Fours INTEGER,
+                Sixes INTEGER,
+                Bowled REAL,
+                Maiden INTEGER,
+                Given INTEGER,
+                Wkts INTEGER,
+                Catches INTEGER,
+                Stumping INTEGER,
+                RO INTEGER
+            )
+        ''')
+        
+        # Create stats table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS stats (
+                player TEXT PRIMARY KEY,
+                matches INTEGER,
+                runs INTEGER,
+                hundreds INTEGER,
+                fifties INTEGER,
+                value INTEGER,
+                ctg TEXT
+            )
+        ''')
+        
+        # Create teams table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS teams (
+                name TEXT PRIMARY KEY,
+                players TEXT,
+                value INTEGER
+            )
+        ''')
+        
+        # Insert sample data into stats table
+        sample_players = [
+            ('Virat Kohli', 200, 12000, 43, 62, 15, 'Batsman'),
+            ('Rohit Sharma', 180, 10000, 38, 55, 14, 'Batsman'),
+            ('KL Rahul', 120, 5000, 15, 28, 12, 'Batsman'),
+            ('Shikhar Dhawan', 150, 7000, 20, 40, 11, 'Batsman'),
+            ('Jasprit Bumrah', 100, 500, 0, 0, 15, 'Bowler'),
+            ('Mohammed Shami', 90, 400, 0, 0, 13, 'Bowler'),
+            ('Yuzvendra Chahal', 80, 300, 0, 0, 12, 'Bowler'),
+            ('Ravindra Jadeja', 110, 3000, 5, 15, 14, 'All-Rounder'),
+            ('Hardik Pandya', 95, 2500, 3, 12, 13, 'All-Rounder'),
+            ('MS Dhoni', 140, 8000, 10, 50, 12, 'Wicket-Keeper'),
+            ('Rishabh Pant', 70, 3500, 8, 20, 11, 'Wicket-Keeper')
+        ]
+        
+        cursor.executemany('''
+            INSERT OR IGNORE INTO stats (player, matches, runs, hundreds, fifties, value, ctg)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', sample_players)
+        
+        # Insert sample match data
+        sample_match_data = [
+            ('Virat Kohli', 85, 60, 8, 2, 0, 0, 0, 0, 1, 0, 0),
+            ('Rohit Sharma', 65, 50, 6, 1, 0, 0, 0, 0, 0, 0, 0),
+            ('KL Rahul', 45, 40, 4, 1, 0, 0, 0, 0, 1, 0, 0),
+            ('Shikhar Dhawan', 30, 35, 3, 0, 0, 0, 0, 0, 0, 0, 0),
+            ('Jasprit Bumrah', 5, 3, 0, 0, 4, 1, 25, 3, 0, 0, 0),
+            ('Mohammed Shami', 8, 5, 1, 0, 4, 0, 30, 2, 1, 0, 0),
+            ('Yuzvendra Chahal', 2, 2, 0, 0, 4, 0, 28, 2, 0, 0, 0),
+            ('Ravindra Jadeja', 35, 30, 3, 1, 2, 0, 18, 1, 1, 0, 1),
+            ('Hardik Pandya', 42, 28, 4, 2, 3, 0, 22, 2, 0, 0, 0),
+            ('MS Dhoni', 28, 25, 2, 1, 0, 0, 0, 0, 0, 2, 0),
+            ('Rishabh Pant', 55, 40, 5, 2, 0, 0, 0, 0, 1, 1, 0)
+        ]
+        
+        cursor.executemany('''
+            INSERT OR IGNORE INTO match (Player, Scored, Faced, Fours, Sixes, Bowled, 
+                                        Maiden, Given, Wkts, Catches, Stumping, RO)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', sample_match_data)
+        
+        conn.commit()
+        conn.close()
+    
+    def init_ui(self):
+        """Initialize the user interface"""
+        self.setWindowTitle('Fantasy Cricket Game')
+        self.setGeometry(100, 100, 900, 600)
+        
+        # Create menu bar
+        self.create_menu_bar()
+        
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        main_layout = QVBoxLayout()
+        
+        # Category selection
+        category_layout = QHBoxLayout()
+        category_label = QLabel('Select Category:')
+        category_layout.addWidget(category_label)
+        
+        self.category_group = QButtonGroup()
+        categories = ['Batsman', 'Bowler', 'All-Rounder', 'Wicket-Keeper']
+        
+        for category in categories:
+            radio_btn = QRadioButton(category)
+            radio_btn.toggled.connect(self.on_category_changed)
+            radio_btn.setEnabled(False)
+            self.category_group.addButton(radio_btn)
+            category_layout.addWidget(radio_btn)
+        
+        category_layout.addStretch()
+        main_layout.addLayout(category_layout)
+        
+        # Players lists
+        lists_layout = QHBoxLayout()
+        
+        # Available players list
+        left_layout = QVBoxLayout()
+        left_layout.addWidget(QLabel('Available Players'))
+        self.available_players_list = QListWidget()
+        self.available_players_list.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.available_players_list.itemDoubleClicked.connect(self.add_player)
+        left_layout.addWidget(self.available_players_list)
+        
+        # Selected players list
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(QLabel('Selected Players'))
+        self.selected_players_list = QListWidget()
+        self.selected_players_list.itemDoubleClicked.connect(self.remove_player)
+        right_layout.addWidget(self.selected_players_list)
+        
+        lists_layout.addLayout(left_layout)
+        lists_layout.addLayout(right_layout)
+        main_layout.addLayout(lists_layout)
+        
+        # Points display
+        points_layout = QHBoxLayout()
+        self.points_label = QLabel('Points Available: 100 | Points Used: 0')
+        points_layout.addWidget(self.points_label)
+        main_layout.addLayout(points_layout)
+        
+        central_widget.setLayout(main_layout)
+    
+    def create_menu_bar(self):
+        """Create the menu bar with options"""
+        menubar = self.menuBar()
+        
+        team_menu = menubar.addMenu('Manage Teams')
+        
+        new_team_action = QAction('New Team', self)
+        new_team_action.triggered.connect(self.new_team)
+        team_menu.addAction(new_team_action)
+        
+        open_team_action = QAction('Open Team', self)
+        open_team_action.triggered.connect(self.open_team)
+        team_menu.addAction(open_team_action)
+        
+        save_team_action = QAction('Save Team', self)
+        save_team_action.triggered.connect(self.save_team)
+        team_menu.addAction(save_team_action)
+        
+        evaluate_menu = menubar.addMenu('Evaluate')
+        
+        evaluate_action = QAction('Evaluate Score', self)
+        evaluate_action.triggered.connect(self.evaluate_score)
+        evaluate_menu.addAction(evaluate_action)
+    
+    def new_team(self):
+        """Create a new team"""
+        team_name, ok = QInputDialog.getText(self, 'New Team', 'Enter team name:')
+        
+        if ok and team_name:
+            self.current_team_name = team_name
+            self.selected_players = []
+            self.selected_players_list.clear()
+            
+            # Enable category buttons
+            for button in self.category_group.buttons():
+                button.setEnabled(True)
+            
+            # Select first category by default
+            self.category_group.buttons()[0].setChecked(True)
+            self.update_points_display()
+            
+            QMessageBox.information(self, 'Success', f'Team "{team_name}" created!')
+    
+    def on_category_changed(self):
+        """Handle category selection change"""
+        selected_button = self.category_group.checkedButton()
+        if selected_button:
+            category = selected_button.text()
+            self.load_players_by_category(category)
+    
+    def load_players_by_category(self, category):
+        """Load players from database based on category"""
+        self.available_players_list.clear()
+        
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT player, value FROM stats WHERE ctg = ?', (category,))
+        players = cursor.fetchall()
+        
+        for player, value in players:
+            # Check if player is already selected
+            if player not in self.selected_players:
+                self.available_players_list.addItem(f'{player} ({value} pts)')
+        
+        conn.close()
+    
+    def add_player(self, item):
+        """Add player to selected team"""
+        if not self.current_team_name:
+            QMessageBox.warning(self, 'Error', 'Please create a team first!')
+            return
+        
+        player_text = item.text()
+        player_name = player_text.split(' (')[0]
+        player_value = int(player_text.split('(')[1].split(' pts)')[0])
+        
+        # Check if we have 11 players
+        if len(self.selected_players) >= 11:
+            QMessageBox.warning(self, 'Error', 'You can only select 11 players!')
+            return
+        
+        # Check points
+        used_points = self.get_used_points()
+        if used_points + player_value > self.max_points:
+            QMessageBox.warning(self, 'Error', 'Not enough points available!')
+            return
+        
+        # Add player
+        self.selected_players.append(player_name)
+        self.selected_players_list.addItem(player_text)
+        self.available_players_list.takeItem(self.available_players_list.row(item))
+        self.update_points_display()
+    
+    def remove_player(self, item):
+        """Remove player from selected team"""
+        player_text = item.text()
+        player_name = player_text.split(' (')[0]
+        
+        self.selected_players.remove(player_name)
+        self.selected_players_list.takeItem(self.selected_players_list.row(item))
+        
+        # Refresh current category list
+        selected_button = self.category_group.checkedButton()
+        if selected_button:
+            self.load_players_by_category(selected_button.text())
+        
+        self.update_points_display()
+    
+    def get_used_points(self):
+        """Calculate total points used"""
+        total = 0
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        for player in self.selected_players:
+            cursor.execute('SELECT value FROM stats WHERE player = ?', (player,))
+            result = cursor.fetchone()
+            if result:
+                total += result[0]
+        
+        conn.close()
+        return total
+    
+    def update_points_display(self):
+        """Update the points display label"""
+        used = self.get_used_points()
+        available = self.max_points - used
+        self.points_label.setText(f'Points Available: {available} | Points Used: {used}')
+    
+    def save_team(self):
+        """Save the current team to database"""
+        if not self.current_team_name:
+            QMessageBox.warning(self, 'Error', 'No team to save!')
+            return
+        
+        if len(self.selected_players) != 11:
+            QMessageBox.warning(self, 'Error', 'You must select exactly 11 players!')
+            return
+        
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        players_str = ','.join(self.selected_players)
+        used_points = self.get_used_points()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO teams (name, players, value)
+            VALUES (?, ?, ?)
+        ''', (self.current_team_name, players_str, used_points))
+        
+        conn.commit()
+        conn.close()
+        
+        QMessageBox.information(self, 'Success', f'Team "{self.current_team_name}" saved!')
+    
+    def open_team(self):
+        """Open an existing team from database"""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT name FROM teams')
+        teams = cursor.fetchall()
+        conn.close()
+        
+        if not teams:
+            QMessageBox.information(self, 'Info', 'No saved teams found!')
+            return
+        
+        team_names = [team[0] for team in teams]
+        team_name, ok = QInputDialog.getItem(self, 'Open Team', 'Select team:', 
+                                             team_names, 0, False)
+        
+        if ok and team_name:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT players FROM teams WHERE name = ?', (team_name,))
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                self.current_team_name = team_name
+                self.selected_players = result[0].split(',')
+                
+                # Enable category buttons
+                for button in self.category_group.buttons():
+                    button.setEnabled(True)
+                
+                # Refresh display
+                self.selected_players_list.clear()
+                conn = sqlite3.connect(self.db_name)
+                cursor = conn.cursor()
+                
+                for player in self.selected_players:
+                    cursor.execute('SELECT value FROM stats WHERE player = ?', (player,))
+                    value = cursor.fetchone()[0]
+                    self.selected_players_list.addItem(f'{player} ({value} pts)')
+                
+                conn.close()
+                
+                # Select first category
+                self.category_group.buttons()[0].setChecked(True)
+                self.update_points_display()
+    
+    def evaluate_score(self):
+        """Evaluate team score based on match performance"""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT name FROM teams')
+        teams = cursor.fetchall()
+        conn.close()
+        
+        if not teams:
+            QMessageBox.information(self, 'Info', 'No saved teams found!')
+            return
+        
+        team_names = [team[0] for team in teams]
+        team_name, ok = QInputDialog.getItem(self, 'Evaluate Score', 
+                                             'Select team to evaluate:', 
+                                             team_names, 0, False)
+        
+        if ok and team_name:
+            score = self.calculate_team_score(team_name)
+            QMessageBox.information(self, 'Team Score', 
+                                   f'Total score for team "{team_name}": {score} points')
+    
+    def calculate_team_score(self, team_name):
+        """Calculate total score for a team"""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT players FROM teams WHERE name = ?', (team_name,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return 0
+        
+        players = result[0].split(',')
+        total_score = 0
+        
+        for player in players:
+            cursor.execute('''
+                SELECT Scored, Faced, Fours, Sixes, Bowled, Maiden, Given, 
+                       Wkts, Catches, Stumping, RO
+                FROM match WHERE Player = ?
+            ''', (player,))
+            
+            match_data = cursor.fetchone()
+            if match_data:
+                score = self.calculate_player_score(match_data)
+                total_score += score
+        
+        conn.close()
+        return total_score
+    
+    def calculate_player_score(self, match_data):
+        """Calculate score for a single player"""
+        scored, faced, fours, sixes, bowled, maiden, given, wkts, catches, stumping, ro = match_data
+        score = 0
+        
+        # Batting points
+        if scored and faced:
+            score += scored // 2  # 1 point per 2 runs
+            
+            if scored >= 100:
+                score += 10  # Century bonus
+            elif scored >= 50:
+                score += 5  # Half-century bonus
+            
+            strike_rate = (scored / faced) * 100
+            if strike_rate > 100:
+                score += 4
+            elif 80 <= strike_rate <= 100:
+                score += 2
+            
+            score += fours * 1  # 1 point per four
+            score += sixes * 2  # 2 points per six
+        
+        # Bowling points
+        if bowled and bowled > 0:
+            score += wkts * 10  # 10 points per wicket
+            
+            if wkts >= 5:
+                score += 10
+            elif wkts >= 3:
+                score += 5
+            
+            economy_rate = given / bowled if bowled > 0 else 0
+            if economy_rate < 2:
+                score += 10
+            elif 2 <= economy_rate < 3.5:
+                score += 7
+            elif 3.5 <= economy_rate <= 4.5:
+                score += 4
+        
+        # Fielding points
+        score += catches * 10
+        score += stumping * 10
+        score += ro * 10
+        
+        return score
+
+def main():
+    app = QApplication(sys.argv)
+    window = FantasyCricketApp()
+    window.show()
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
