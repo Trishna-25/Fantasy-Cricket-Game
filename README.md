@@ -116,7 +116,7 @@ python fantasy\_cricket.py
 
 
 
-\[Your Name]
+TRISHNA
 
 
 
@@ -125,4 +125,5 @@ python fantasy\_cricket.py
 
 
 This project was created as a final project for Python programming course.
+
 
